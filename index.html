@@ -599,7 +599,9 @@ function stepMolecule(m, D, drift) {
       const r = Math.random()*RX.r*0.85;
       m.x = RX.x + Math.cos(a)*r;
       m.y = RX.y + Math.sin(a)*r;
-      m.received=true; receivedCount++; return;
+      m.received=true;
+      m.receivedBit=currentBitIdx;   // track which bit period received this molecule
+      receivedCount++; return;
     }
 
     // Boundary
@@ -681,7 +683,8 @@ function drawDistLine(ctx) {
 function drawMolecule(ctx, m) {
   if (m.lost) return;
   if (m.received) {
-    // Draw at the fixed position where the molecule was absorbed — no random jitter
+    // Only show dot if received during the current bit period
+    if (m.receivedBit !== currentBitIdx) return;
     ctx.beginPath();
     ctx.arc(m.x, m.y, 2.2, 0, Math.PI*2);
     ctx.fillStyle='rgba(5,150,105,0.55)'; ctx.fill(); return;
