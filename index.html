@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CvD Simulator</title>
+<title>MCvD Simulator</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 
@@ -149,9 +149,9 @@
     flex:1; min-height:0;
   }
 
-  /* Bit sequence overlay — drawn inside sim-area on the right side */
+  /* Bit sequence overlay — drawn inside sim-area at bottom-right */
   .bit-overlay {
-    position:absolute; top:8px; right:8px;
+    position:absolute; bottom:8px; right:8px;
     display:flex; flex-direction:column; gap:4px;
     background:rgba(255,255,255,0.88);
     border:1px solid var(--border); border-radius:6px;
@@ -233,8 +233,8 @@
 
 <header>
   <div class="header-dot"></div>
-  <h1>CvD Simulator</h1>
-  <span class="sub">Communication via Diffusion · molecular signaling model</span>
+  <h1>MCvD Simulator</h1>
+  <span class="sub">Molecular Communication via Diffusion · signaling model</span>
   <div class="header-spacer"></div>
   <span class="header-tag">Brownian diffusion</span>
 </header>
@@ -395,7 +395,7 @@
         <h2>Reception Rate</h2>
         <p>First-passage-time distribution</p>
         <br>
-        <span class="graph-unit" id="graphUnitBadge">mol / 0.50 s</span>
+        <span class="graph-unit" id="graphUnitBadge">molecules / s</span>
       </div>
       <div class="bin-ctrl">
         <label>Bin: <span id="binSizeLabel">0.50</span> s</label>
@@ -486,7 +486,7 @@ $('binRange').addEventListener('input', ()=>{
   const v = parseFloat($('binRange').value).toFixed(2);
   $('binRangeVal').textContent    = v+' s';
   $('binSizeLabel').textContent   = v;
-  $('graphUnitBadge').textContent = 'mol / '+v+' s';
+  $('graphUnitBadge').textContent = 'molecules / s';
   if (baseBuckets.length > 0) {
     rebinFromBase();
     drawGraph();
@@ -539,8 +539,8 @@ function layoutCells() {
   const W = simCanvas.width, H = simCanvas.height;
   const { distUm, rtxUm, rrxUm, simWUm, simHUm } = getParams();
 
-  // Fit the user-defined boundary rectangle into the canvas with a 10% margin on each side
-  const MARGIN = 0.10;
+  // Fit the user-defined boundary rectangle into the canvas with a 4% margin on each side
+  const MARGIN = 0.04;
   const scaleX = (W * (1 - 2*MARGIN)) / simWUm;
   const scaleY = (H * (1 - 2*MARGIN)) / simHUm;
   PX_PER_UM = Math.min(scaleX, scaleY);
@@ -706,7 +706,7 @@ function drawIdle() {
 }
 
 // ── Draw: graph ────────────────────────────────────────────────────────────────
-const PAD = {t:28, r:18, b:48, l:52};
+const PAD = {t:18, r:12, b:32, l:46};
 
 function gp() {
   const W=graphCanvas.width, H=graphCanvas.height;
@@ -728,21 +728,18 @@ function rebinFromBase() {
 function drawGraphEmpty() {
   const {W,H,pw,ph}=gp();
   gctx.clearRect(0,0,W,H); gctx.fillStyle='#f7f9fc'; gctx.fillRect(0,0,W,H);
-  // Draw axis lines only — no ticks, no scale, since there's no data yet
   gctx.strokeStyle='#cbd5e1'; gctx.lineWidth=1.5;
   gctx.beginPath();
   gctx.moveTo(PAD.l,PAD.t); gctx.lineTo(PAD.l,PAD.t+ph); gctx.lineTo(PAD.l+pw,PAD.t+ph);
   gctx.stroke();
-  // Y-axis label
   gctx.fillStyle='#94a3b8';
   gctx.save();
   gctx.translate(13,PAD.t+ph/2); gctx.rotate(-Math.PI/2);
   gctx.textAlign='center'; gctx.font='10px "DM Sans",sans-serif';
-  gctx.fillText('mol / '+getBinSec().toFixed(2)+' s',0,0);
+  gctx.fillText('molecules / s',0,0);
   gctx.restore();
-  // X-axis label
   gctx.textAlign='center'; gctx.font='10px "DM Sans",sans-serif';
-  gctx.fillText('Time (s)', PAD.l+pw/2, PAD.t+ph+42);
+  gctx.fillText('Time (s)', PAD.l+pw/2, PAD.t+ph+PAD.b-6);
 }
 
 function gaussianSmooth(arr, sigma) {
@@ -811,9 +808,9 @@ function drawGraph() {
   drawGraphAxes(Math.ceil(maxVal));
 
   gctx.fillStyle='#94a3b8'; gctx.font='10px "DM Sans",sans-serif';
-  gctx.textAlign='left';  gctx.fillText('0 s',PAD.l,PAD.t+ph+28);
-  gctx.textAlign='right'; gctx.fillText(totalSec.toFixed(1)+' s',PAD.l+pw,PAD.t+ph+28);
-  gctx.textAlign='center';gctx.fillText('Time (s)',PAD.l+pw/2,PAD.t+ph+42);
+  gctx.textAlign='left';  gctx.fillText('0 s',PAD.l,PAD.t+ph+14);
+  gctx.textAlign='right'; gctx.fillText(totalSec.toFixed(1)+' s',PAD.l+pw,PAD.t+ph+14);
+  gctx.textAlign='center';gctx.fillText('Time (s)',PAD.l+pw/2,PAD.t+ph+PAD.b-4);
 }
 
 function drawGraphAxes(maxVal) {
@@ -864,7 +861,7 @@ function drawGraphAxes(maxVal) {
   gctx.save();
   gctx.translate(13,PAD.t+ph/2); gctx.rotate(-Math.PI/2);
   gctx.textAlign='center'; gctx.font='10px "DM Sans",sans-serif';
-  gctx.fillText('mol / '+getBinSec().toFixed(2)+' s',0,0);
+  gctx.fillText('molecules / s',0,0);
   gctx.restore();
 }
 
