@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CvD Simulator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg:       #f0f3f8;
+    --panel:    #ffffff;
+    --panel2:   #f7f9fc;
+    --border:   #dde3ee;
+    --border2:  #c8d1e0;
+    --accent:   #2563eb;
+    --accentRx: #059669;
+    --text:     #1e293b;
+    --muted:    #64748b;
+    --subtle:   #94a3b8;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background:var(--bg); color:var(--text);
+    font-family:'DM Sans',sans-serif; font-size:14px;
+    height:100vh; display:flex; flex-direction:column; overflow:hidden;
+  }
+
+  header {
+    padding:0 28px; height:52px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:14px; background:var(--panel); flex-shrink:0;
+  }
+  .header-dot { width:8px;height:8px;border-radius:50%;background:var(--accent); }
+  header h1 { font-size:0.95rem;font-weight:600;color:var(--text);letter-spacing:-0.01em; }
+  header .sub { font-size:0.75rem;color:var(--subtle); }
+  .header-spacer { flex:1; }
+  .header-tag {
+    font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--accent);
+    background:#eff6ff; border:1px solid #bfdbfe; padding:3px 9px; border-radius:20px;
+  }
+
+  /* ── Main three-column layout ── */
+  .main {
+    display:flex; flex:1; overflow:hidden; min-height:0;
+  }
+
+  /* ── Controls: fixed width, scrollable content, sticky button footer ── */
+  .controls {
+    width:480px; min-width:480px; flex-shrink:0;
+    background:var(--panel); border-right:1px solid var(--border);
+    display:flex; flex-direction:column;
+    overflow:hidden;   /* the inner scroll-area handles scrolling */
+    height:100%;
+  }
+  .controls-scroll {
+    flex:1; min-height:0;
+    padding:16px 16px 8px;
+    display:flex; flex-direction:column; gap:14px;
+    overflow-y:scroll;
+  }
+  .controls-footer {
+    flex-shrink:0;
+    padding:10px 16px 12px;
+    border-top:1px solid var(--border);
+    background:var(--panel);
+    display:flex; flex-direction:column; gap:8px;
+  }
+
+  .section-label {
+    font-size:0.64rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--subtle); padding-bottom:4px; border-bottom:1px solid var(--border);
+    flex-shrink:0;
+  }
+  .ctrl-group { display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
+  .ctrl-header { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl-header label { font-size:0.78rem; font-weight:500; color:var(--text); }
+  .ctrl-header .unit-hint { font-family:'DM Mono',monospace; font-size:0.67rem; color:var(--subtle); }
+  .ctrl-val { font-family:'DM Mono',monospace; font-size:1.05rem; font-weight:500; color:var(--accent); }
+  .ctrl-desc { font-size:0.67rem; color:var(--subtle); line-height:1.5; }
+
+  input[type=range] {
+    -webkit-appearance:none; width:100%; height:4px; background:var(--border);
+    border-radius:4px; outline:none; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance:none; width:15px; height:15px; border-radius:50%;
+    background:var(--accent); border:2px solid #fff;
+    box-shadow:0 1px 4px rgba(37,99,235,0.35); cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb {
+    width:15px; height:15px; border-radius:50%; background:var(--accent);
+    border:2px solid #fff; box-shadow:0 1px 4px rgba(37,99,235,0.35); cursor:pointer;
+  }
+
+  .divider { border:none; border-top:1px solid var(--border); flex-shrink:0; }
+
+  .btn {
+    padding:9px 14px; border-radius:7px; font-family:'DM Sans',sans-serif;
+    font-size:0.8rem; font-weight:500; cursor:pointer; transition:all 0.15s; text-align:center;
+    flex-shrink:0;
+  }
+  .btn-primary { background:var(--accent);color:#fff;border:1px solid var(--accent);box-shadow:0 1px 3px rgba(37,99,235,0.3); }
+  .btn-primary:hover { background:#1d4ed8; }
+  .btn-secondary { background:var(--panel2);color:var(--muted);border:1px solid var(--border); }
+  .btn-secondary:hover { background:var(--border);color:var(--text); }
+
+  .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; flex-shrink:0; }
+  .stat-box {
+    background:var(--panel2); border:1px solid var(--border); border-radius:8px;
+    padding:9px 8px; text-align:center;
+  }
+  .stat-box .sv { display:block;font-family:'DM Mono',monospace;font-weight:500;font-size:1rem;color:var(--accent);line-height:1.2; }
+  .stat-box .sl { display:block;font-size:0.6rem;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;color:var(--subtle);margin-top:2px; }
+
+  .phase-badge {
+    display:inline-flex;align-items:center;gap:6px;font-size:0.72rem;font-weight:500;
+    padding:4px 10px;border-radius:20px;border:1px solid var(--border);
+    color:var(--subtle);background:var(--panel2); flex-shrink:0;
+  }
+  .phase-badge::before { content:'';width:6px;height:6px;border-radius:50%;background:var(--subtle); }
+  .phase-badge.active { border-color:#bbf7d0;color:var(--accentRx);background:#f0fdf4; }
+  .phase-badge.active::before { background:var(--accentRx); }
+  .phase-badge.done   { border-color:#bfdbfe;color:var(--accent);background:#eff6ff; }
+  .phase-badge.done::before { background:var(--accent); }
+
+  .info-box {
+    background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:10px;
+    font-size:0.67rem;color:#92400e;line-height:1.6; flex-shrink:0;
+  }
+
+  /* ── Sim Area: fills remaining space, column layout ── */
+  .sim-area {
+    flex:1; min-width:0; min-height:0;
+    display:flex; flex-direction:column;
+    overflow:hidden; background:#eef2f9;
+  }
+  /* Canvas sits at the TOP and fills whatever height remains after the bit strip */
+  #simCanvas {
+    display:block; width:100%;
+    flex:1; min-height:0;   /* shrink to make room for bit-display */
+  }
+
+  /* Bit sequence display strip — fixed height at the bottom of sim-area */
+  .bit-display {
+    flex-shrink:0; background:var(--panel); border-top:1px solid var(--border);
+    padding:8px 16px 10px; display:flex; flex-direction:column; gap:5px;
+  }
+  .bit-row { display:flex; align-items:center; gap:8px; }
+  .bit-row-label {
+    font-size:0.65rem; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--subtle); width:26px; flex-shrink:0;
+  }
+  .bit-cells { display:flex; gap:4px; flex-wrap:wrap; }
+  .bit-cell {
+    width:22px; height:22px; border-radius:4px; display:flex; align-items:center;
+    justify-content:center; font-family:'DM Mono',monospace; font-size:0.75rem; font-weight:500;
+    border:1px solid var(--border); background:var(--panel2); color:var(--subtle);
+  }
+  .bit-cell.active  { border-color:var(--accent); color:var(--accent); background:#eff6ff; }
+  .bit-cell.correct { border-color:#059669; color:#059669; background:#f0fdf4; }
+  .bit-cell.error   { border-color:#dc2626; color:#dc2626; background:#fef2f2; }
+  .bit-cell.pending { border-color:var(--border2); color:var(--muted); background:var(--panel2); }
+
+  /* ── Graph Panel ── */
+  .graph-panel {
+    width:420px; min-width:420px; flex-shrink:0;
+    border-left:1px solid var(--border); background:var(--panel);
+    display:flex; flex-direction:column; padding:16px 18px 14px; gap:10px; overflow-y:auto;
+    height:100%;
+  }
+  .graph-header { display:flex;justify-content:space-between;align-items:flex-start;flex-shrink:0; }
+  .graph-header h2 { font-size:0.85rem;font-weight:600;color:var(--text); }
+  .graph-header p  { font-size:0.67rem;color:var(--subtle);margin-top:2px; }
+  .graph-unit {
+    font-family:'DM Mono',monospace;font-size:0.64rem;color:var(--muted);
+    background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:3px 8px;white-space:nowrap;
+  }
+  #graphCanvas {
+    width:100%;height:280px;min-height:280px;flex-shrink:0;
+    border:1px solid var(--border);border-radius:8px;background:var(--panel2);display:block;
+  }
+  .legend { display:flex;gap:18px;flex-wrap:wrap;flex-shrink:0; }
+  .legend-item { display:flex;align-items:center;gap:6px;font-size:0.67rem;color:var(--muted);font-weight:500; }
+  .legend-swatch { width:20px;height:3px;border-radius:2px; }
+
+  /* Custom scrollbar for controls */
+  .controls-scroll::-webkit-scrollbar { width:5px; }
+  .controls-scroll::-webkit-scrollbar-track { background:transparent; }
+  .controls-scroll::-webkit-scrollbar-thumb { background:var(--border2);border-radius:3px; }
+  .controls-scroll::-webkit-scrollbar-thumb:hover { background:var(--muted); }
+
+  .switch-row { display:flex; gap:0; border:1px solid var(--border); border-radius:7px; overflow:hidden; }
+  .switch-btn {
+    flex:1; padding:7px 6px; background:var(--panel2); color:var(--muted);
+    border:none; font-family:'DM Sans',sans-serif; font-size:0.75rem; font-weight:500;
+    cursor:pointer; transition:all 0.15s;
+  }
+  .switch-btn:first-child { border-right:1px solid var(--border); }
+  .switch-btn.active { background:var(--accent); color:#fff; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-dot"></div>
+  <h1>CvD Simulator</h1>
+  <span class="sub">Communication via Diffusion · molecular signaling model</span>
+  <div class="header-spacer"></div>
+  <span class="header-tag">Brownian diffusion</span>
+</header>
+
+<div class="main">
+
+  <!-- ── Controls ── -->
+  <div class="controls">
+  <div class="controls-scroll">
+    <div class="section-label">Bit Sequence</div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-header"><label>Input Bit Sequence</label><span class="unit-hint">≤10 bits</span></div>
+      <input type="text" id="bitSeqInput" value="1011010" maxlength="10"
+        style="font-family:'DM Mono',monospace;font-size:1rem;font-weight:500;color:var(--accent);
+               background:var(--panel2);border:1px solid var(--border);border-radius:6px;
+               padding:6px 10px;width:100%;outline:none;letter-spacing:0.15em;">
+      <span class="ctrl-desc">Only 0s and 1s. Each bit triggers a molecule release at its start.</span>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-header"><label>Molecules for Bit-0</label><span class="unit-hint">count</span></div>
+      <span class="ctrl-val" id="mol0Val">0</span>
+      <input type="range" id="mol0Range" min="0" max="1000" step="10" value="0">
+      <span class="ctrl-desc">Molecules released when transmitting a '0'.</span>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-header"><label>Molecules for Bit-1</label><span class="unit-hint">count</span></div>
+      <span class="ctrl-val" id="mol1Val">300</span>
+      <input type="range" id="mol1Range" min="0" max="1000" step="10" value="300">
+      <span class="ctrl-desc">Molecules released when transmitting a '1'.</span>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-header"><label>Detection Threshold</label><span class="unit-hint">%</span></div>
+      <span class="ctrl-val" id="thrVal">50%</span>
+      <input type="range" id="thrRange" min="1" max="99" step="1" value="50">
+      <span class="ctrl-desc">Fraction of max(mol₀, mol₁). Received count above threshold → infer the higher-molecule bit.</span>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-header"><label>Bit Duration</label><span class="unit-hint">s</span></div>
+      <span class="ctrl-val" id="bitDurVal">10 s</span>
+      <input type="range" id="bitDurRange" min="1" max="30" step="0.5" value="10">
+      <span class="ctrl-desc">Duration of each bit period. Unreceived molecules persist (ISI).</span>
+    </div>
+
+    <div class="section-label">Channel</div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-header"><label>Cell Distance</label><span class="unit-hint">μm</span></div>
+      <span class="ctrl-val" id="distVal">60 μm</span>
+      <input type="range" id="distRange" min="20" max="250" step="5" value="60">
+      <span class="ctrl-desc">Edge-to-edge gap between transmitter and receiver membranes.</span>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-header"><label>Diffusion Coefficient (D)</label><span class="unit-hint">μm²/s</span></div>
+      <span class="ctrl-val" id="diffVal">70 μm²/s</span>
+      <input type="range" id="diffRange" min="10" max="500" step="10" value="70">
+      <span class="ctrl-desc">Diffusion coefficient of the signaling molecule in the medium (Stokes–Einstein relation).</span>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-header"><label>Drift Velocity (v)</label><span class="unit-hint">μm/s</span></div>
+      <span class="ctrl-val" id="driftVal">0 μm/s</span>
+      <input type="range" id="driftRange" min="-50" max="50" step="1" value="0">
+      <span class="ctrl-desc">Bulk flow along TX→RX axis. Zero = pure Brownian motion.</span>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-header"><label>Boundary Type</label></div>
+      <div class="switch-row">
+        <button class="switch-btn active" id="bndReflect" onclick="setBoundary('reflect')">Reflecting</button>
+        <button class="switch-btn" id="bndAbsorb"  onclick="setBoundary('absorb')">Absorbing</button>
+      </div>
+      <span class="ctrl-desc">Reflecting: molecules bounce. Absorbing: molecules touching the boundary are removed.</span>
+    </div>
+
+    <div class="section-label">Cell Geometry</div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-header"><label>Simulation Area Width</label><span class="unit-hint">μm</span></div>
+      <span class="ctrl-val" id="simWVal">300 μm</span>
+      <input type="range" id="simWRange" min="100" max="1000" step="10" value="300">
+      <span class="ctrl-desc">Horizontal extent of the diffusion boundary.</span>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-header"><label>Simulation Area Height</label><span class="unit-hint">μm</span></div>
+      <span class="ctrl-val" id="simHVal">300 μm</span>
+      <input type="range" id="simHRange" min="100" max="1000" step="10" value="300">
+      <span class="ctrl-desc">Vertical extent of the diffusion boundary.</span>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-header"><label>Transmitter Radius (r<sub>tx</sub>)</label><span class="unit-hint">μm</span></div>
+      <span class="ctrl-val" id="rtxVal">10 μm</span>
+      <input type="range" id="rtxRange" min="3" max="30" step="1" value="10">
+      <span class="ctrl-desc">Radius of the transmitter cell.</span>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-header"><label>Receiver Radius (r<sub>rx</sub>)</label><span class="unit-hint">μm</span></div>
+      <span class="ctrl-val" id="rrxVal">10 μm</span>
+      <input type="range" id="rrxRange" min="3" max="30" step="1" value="10">
+      <span class="ctrl-desc">Target cell radius. Larger receiver captures more molecules.</span>
+    </div>
+
+    <div class="section-label">Live Statistics</div>
+    <div class="stats-grid">
+      <div class="stat-box"><span class="sv" id="statBit">—</span><span class="sl">Current Bit</span></div>
+      <div class="stat-box"><span class="sv" id="statReleased">0</span><span class="sl">Released</span></div>
+      <div class="stat-box"><span class="sv" id="statReceived">0</span><span class="sl">Received</span></div>
+      <div class="stat-box"><span class="sv" id="statTime">0.0 s</span><span class="sl">Sim Time</span></div>
+    </div>
+
+    <span class="phase-badge" id="phaseBadge">Idle</span>
+
+    <div class="info-box">
+      Each bit triggers a molecule release at the start of its period. Unreceived molecules persist in the channel, causing inter-symbol interference (ISI). The simulation stops after the last bit period ends.
+    </div>
+  </div><!-- end controls-scroll -->
+
+  <div class="controls-footer">
+    <button class="btn btn-primary" onclick="startSim()">▶&nbsp; Run Simulation</button>
+    <button class="btn btn-secondary" onclick="resetSim()">↺&nbsp; Reset</button>
+  </div>
+  </div><!-- end controls -->
+
+  <!-- ── Simulation ── -->
+  <div class="sim-area">
+    <canvas id="simCanvas"></canvas>
+    <div class="bit-display" id="bitDisplay">
+      <div class="bit-row">
+        <span class="bit-row-label">TX</span>
+        <div class="bit-cells" id="txBits"></div>
+      </div>
+      <div class="bit-row">
+        <span class="bit-row-label">RX</span>
+        <div class="bit-cells" id="rxBits"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Graph ── -->
+  <div class="graph-panel">
+    <div class="graph-header">
+      <div>
+        <h2>Reception Rate Over Time</h2>
+        <p>First-passage-time distribution · bin: <span id="binSizeLabel">0.50</span> s</p>
+      </div>
+      <span class="graph-unit" id="graphUnitBadge">molecules / 0.50 s</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+      <span style="font-size:0.7rem;color:var(--subtle);white-space:nowrap;">Bin size</span>
+      <input type="range" id="binRange" min="0.1" max="1.0" step="0.1" value="0.5" style="flex:1;">
+      <span style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--accent);white-space:nowrap;" id="binRangeVal">0.50 s</span>
+    </div>
+    <canvas id="graphCanvas"></canvas>
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:linear-gradient(90deg,#2563eb,#93c5fd);height:10px;border-radius:3px;opacity:0.5;"></div>
+        Reception rate
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:#2563eb;"></div>
+        Smoothed curve
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const simCanvas   = $('simCanvas');
+const sctx        = simCanvas.getContext('2d');
+const graphCanvas = $('graphCanvas');
+const gctx        = graphCanvas.getContext('2d');
+
+// ── Physical constants ─────────────────────────────────────────────────────────
+const FPS      = 60;
+const SUBSTEPS = 4;
+let PX_PER_UM  = 2.5;
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let running = false, animId = null;
+let molecules = [], receivedCount = 0, releasedCount = 0, frameCount = 0;
+
+// ── Binning ────────────────────────────────────────────────────────────────────
+// BASE_BIN is the finest resolution stored (0.1 s = 6 frames).
+// Any slider bin size is a multiple of BASE_BIN, so rebinning is just summing.
+const BASE_BIN_SEC    = 0.1;
+const BASE_BIN_FRAMES = Math.round(BASE_BIN_SEC * FPS); // 6
+
+function getBinSec()    { return parseFloat($('binRange').value); }
+// How many BASE_BIN buckets make up one display bin (round to nearest integer ≥ 1)
+function getBinMult()   { return Math.max(1, Math.round(getBinSec() / BASE_BIN_SEC)); }
+
+let baseBuckets   = [];  // counts per BASE_BIN_SEC interval — the stored raw data
+let buckets       = [];  // rebinned view shown on graph
+let currentBucket = 0;   // accumulator for the current base-bin in progress
+
+let bitSeq         = [];
+let currentBitIdx  = 0;
+let totalSimFrames = 0;
+let boundaryType   = 'reflect';
+
+// Per-bit detection state
+let bitReceivedAtStart = 0;  // receivedCount at the start of each bit period
+let rxDecisions        = []; // inferred bit for each completed period
+
+let TX = {}, RX = {};
+let BNDRY = { x0:0, y0:0, x1:0, y1:0 };
+
+// ── Controls ───────────────────────────────────────────────────────────────────
+function fmt(slider) {
+  const id = slider.id, v = parseFloat(slider.value);
+  if (id==='mol0Range')   $('mol0Val').textContent   = v;
+  if (id==='mol1Range')   $('mol1Val').textContent   = v;
+  if (id==='thrRange')    $('thrVal').textContent    = v+'%';
+  if (id==='bitDurRange') $('bitDurVal').textContent = v+' s';
+  if (id==='distRange')   $('distVal').textContent   = v+' μm';
+  if (id==='diffRange')   $('diffVal').textContent   = v+' μm²/s';
+  if (id==='driftRange')  $('driftVal').textContent  = v+' μm/s';
+  if (id==='simWRange')   $('simWVal').textContent   = v+' μm';
+  if (id==='simHRange')   $('simHVal').textContent   = v+' μm';
+  if (id==='rtxRange')    $('rtxVal').textContent    = v+' μm';
+  if (id==='rrxRange')    $('rrxVal').textContent    = v+' μm';
+}
+['mol0Range','mol1Range','thrRange','bitDurRange','distRange','diffRange','driftRange',
+ 'simWRange','simHRange','rtxRange','rrxRange']
+  .forEach(id => { const el=$(id); el.addEventListener('input',()=>{fmt(el);if(!running)drawIdle();}); });
+$('bitSeqInput').addEventListener('input', ()=>{ if(!running) drawIdle(); });
+$('binRange').addEventListener('input', ()=>{
+  const v = parseFloat($('binRange').value).toFixed(2);
+  $('binRangeVal').textContent    = v+' s';
+  $('binSizeLabel').textContent   = v;
+  $('graphUnitBadge').textContent = 'molecules / '+v+' s';
+  if (baseBuckets.length > 0) {
+    rebinFromBase();
+    drawGraph();
+  } else if (!running) {
+    drawGraphEmpty();
+  }
+});
+
+function setBoundary(type) {
+  boundaryType = type;
+  $('bndReflect').classList.toggle('active', type==='reflect');
+  $('bndAbsorb').classList.toggle('active',  type==='absorb');
+  if (!running) drawIdle();
+}
+
+function parseBits() {
+  const raw = $('bitSeqInput').value.replace(/[^01]/g,'').slice(0,10);
+  $('bitSeqInput').value = raw;
+  return raw.split('').map(Number);
+}
+
+function getParams() {
+  return {
+    mol0:    parseInt($('mol0Range').value),
+    mol1:    parseInt($('mol1Range').value),
+    thr:     parseFloat($('thrRange').value) / 100,
+    bitDur:  parseFloat($('bitDurRange').value),
+    distUm:  parseFloat($('distRange').value),
+    D:       parseFloat($('diffRange').value),
+    drift:   parseFloat($('driftRange').value),
+    simWUm:  parseFloat($('simWRange').value),
+    simHUm:  parseFloat($('simHRange').value),
+    rtxUm:   parseFloat($('rtxRange').value),
+    rrxUm:   parseFloat($('rrxRange').value),
+  };
+}
+
+// ── Layout ─────────────────────────────────────────────────────────────────────
+function resizeCanvases() {
+  // Read the canvas's own CSS-laid-out size (after flex distributes space)
+  const cr = simCanvas.getBoundingClientRect();
+  simCanvas.width  = Math.max(1, Math.round(cr.width));
+  simCanvas.height = Math.max(1, Math.round(cr.height));
+  graphCanvas.width  = Math.max(1, graphCanvas.offsetWidth);
+  graphCanvas.height = Math.max(1, graphCanvas.offsetHeight || 280);
+}
+window.addEventListener('resize', ()=>{ resizeCanvases(); if(!running) drawIdle(); });
+
+function layoutCells() {
+  const W = simCanvas.width, H = simCanvas.height;
+  const { distUm, rtxUm, rrxUm, simWUm, simHUm } = getParams();
+
+  // Fit the user-defined boundary rectangle into the canvas with a 10% margin on each side
+  const MARGIN = 0.10;
+  const scaleX = (W * (1 - 2*MARGIN)) / simWUm;
+  const scaleY = (H * (1 - 2*MARGIN)) / simHUm;
+  PX_PER_UM = Math.min(scaleX, scaleY);
+
+  // Boundary in canvas pixels, centred with equal margins
+  const bW = simWUm * PX_PER_UM;
+  const bH = simHUm * PX_PER_UM;
+  const bX = (W - bW) / 2;
+  const bY = (H - bH) / 2;
+  BNDRY = { x0: bX, y0: bY, x1: bX + bW, y1: bY + bH };
+
+  // Place cells centred horizontally within the boundary, vertically at mid-boundary
+  const txR = rtxUm * PX_PER_UM;
+  const rxR = rrxUm * PX_PER_UM;
+  const gap  = distUm * PX_PER_UM;
+  const totalPx = txR + gap + rxR;
+  const cx = W / 2;
+  const cy = (BNDRY.y0 + BNDRY.y1) / 2;
+  TX = { x: cx - totalPx/2 + txR,             y: cy, r: txR, rUm: rtxUm };
+  RX = { x: cx - totalPx/2 + txR + gap + rxR, y: cy, r: rxR, rUm: rrxUm };
+}
+
+// ── Molecule ───────────────────────────────────────────────────────────────────
+function makeMolecule() {
+  const a = Math.random()*Math.PI*2;
+  return { x: TX.x+Math.cos(a)*(TX.r+1), y: TX.y+Math.sin(a)*(TX.r+1),
+           received:false, lost:false, age:0, trail:[] };
+}
+
+function stepMolecule(m, D, drift) {
+  if (m.received || m.lost) return;
+  const dt      = 1/(FPS*SUBSTEPS);
+  const sigma   = Math.sqrt(2*D*dt)*PX_PER_UM;
+  const driftPx = drift*dt*PX_PER_UM;
+
+  for (let s=0; s<SUBSTEPS; s++) {
+    if (m.received || m.lost) break;
+    const u1=Math.random(), u2=Math.random();
+    const n1=Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2);
+    const n2=Math.sqrt(-2*Math.log(u1))*Math.sin(2*Math.PI*u2);
+    m.x += n1*sigma + driftPx;
+    m.y += n2*sigma;
+
+    // Reflect off TX
+    const txdx=m.x-TX.x, txdy=m.y-TX.y, txd=Math.sqrt(txdx*txdx+txdy*txdy);
+    if (txd < TX.r+1) {
+      const nx=txdx/txd, ny=txdy/txd;
+      m.x=TX.x+nx*(TX.r+1); m.y=TX.y+ny*(TX.r+1);
+    }
+
+    // Check RX
+    const rxdx=m.x-RX.x, rxdy=m.y-RX.y;
+    if (Math.sqrt(rxdx*rxdx+rxdy*rxdy) < RX.r+1.5) {
+      // Freeze at a random point within the RX cell interior
+      const a = Math.random()*Math.PI*2;
+      const r = Math.random()*RX.r*0.85;
+      m.x = RX.x + Math.cos(a)*r;
+      m.y = RX.y + Math.sin(a)*r;
+      m.received=true; receivedCount++; return;
+    }
+
+    // Boundary
+    if (boundaryType==='reflect') {
+      if (m.x < BNDRY.x0) m.x = 2*BNDRY.x0 - m.x;
+      if (m.x > BNDRY.x1) m.x = 2*BNDRY.x1 - m.x;
+      if (m.y < BNDRY.y0) m.y = 2*BNDRY.y0 - m.y;
+      if (m.y > BNDRY.y1) m.y = 2*BNDRY.y1 - m.y;
+    } else {
+      if (m.x<BNDRY.x0||m.x>BNDRY.x1||m.y<BNDRY.y0||m.y>BNDRY.y1) {
+        m.lost=true; return;
+      }
+    }
+  }
+  m.age++;
+  m.trail.push({x:m.x,y:m.y});
+  if (m.trail.length>8) m.trail.shift();
+}
+
+// ── Draw: simulation ───────────────────────────────────────────────────────────
+function drawBg(ctx, W, H) {
+  ctx.clearRect(0,0,W,H);
+  const bg=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*0.75);
+  bg.addColorStop(0,'#eef3fc'); bg.addColorStop(1,'#e4eaf5');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(37,99,235,0.055)';
+  const gs=28;
+  for (let x=gs;x<W;x+=gs) for (let y=gs;y<H;y+=gs) {
+    ctx.beginPath(); ctx.arc(x,y,1,0,Math.PI*2); ctx.fill();
+  }
+}
+
+function drawBoundary(ctx) {
+  const {x0,y0,x1,y1}=BNDRY;
+  const isAbsorb = boundaryType==='absorb';
+  ctx.save();
+  ctx.setLineDash([6,5]);
+  ctx.strokeStyle = isAbsorb ? 'rgba(220,38,38,0.4)' : 'rgba(100,116,139,0.35)';
+  ctx.lineWidth=1.5;
+  ctx.strokeRect(x0,y0,x1-x0,y1-y0);
+  ctx.setLineDash([]);
+  ctx.fillStyle = isAbsorb ? 'rgba(220,38,38,0.35)' : 'rgba(100,116,139,0.35)';
+  ctx.font='9px "DM Mono",monospace'; ctx.textAlign='left';
+  ctx.fillText(isAbsorb?'absorbing boundary':'reflecting boundary', x0+6, y0+12);
+  ctx.restore();
+}
+
+function drawCell(ctx, cell, strokeCol, fillCol, label) {
+  const g=ctx.createRadialGradient(cell.x,cell.y,0,cell.x,cell.y,cell.r*2.4);
+  g.addColorStop(0,fillCol+'22'); g.addColorStop(1,'transparent');
+  ctx.beginPath(); ctx.arc(cell.x,cell.y,cell.r*2.4,0,Math.PI*2);
+  ctx.fillStyle=g; ctx.fill();
+  const bf=ctx.createRadialGradient(cell.x-cell.r*.25,cell.y-cell.r*.25,cell.r*.1,cell.x,cell.y,cell.r);
+  bf.addColorStop(0,fillCol+'50'); bf.addColorStop(.7,fillCol+'18'); bf.addColorStop(1,fillCol+'06');
+  ctx.beginPath(); ctx.arc(cell.x,cell.y,cell.r,0,Math.PI*2);
+  ctx.fillStyle=bf; ctx.fill();
+  ctx.strokeStyle=strokeCol; ctx.lineWidth=2; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cell.x,cell.y,cell.r*.32,0,Math.PI*2);
+  ctx.fillStyle=fillCol+'20'; ctx.fill();
+  ctx.strokeStyle=fillCol+'60'; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle=strokeCol; ctx.font='bold 12px "DM Sans",sans-serif'; ctx.textAlign='center';
+  ctx.fillText(label, cell.x, cell.y+cell.r+16);
+}
+
+function drawDistLine(ctx) {
+  const y=Math.min(TX.y,RX.y)-Math.max(TX.r,RX.r)-18;
+  ctx.setLineDash([4,5]);
+  ctx.strokeStyle='rgba(100,116,139,0.3)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(TX.x+TX.r,y); ctx.lineTo(RX.x-RX.r,y); ctx.stroke();
+  ctx.setLineDash([]);
+  [TX.x+TX.r,RX.x-RX.r].forEach(x=>{
+    ctx.beginPath(); ctx.moveTo(x,y-4); ctx.lineTo(x,y+4);
+    ctx.strokeStyle='rgba(100,116,139,0.4)'; ctx.stroke();
+  });
+  ctx.fillStyle='#64748b'; ctx.font='11px "DM Sans",sans-serif'; ctx.textAlign='center';
+  ctx.fillText($('distRange').value+' μm',(TX.x+TX.r+RX.x-RX.r)/2,y-8);
+}
+
+function drawMolecule(ctx, m) {
+  if (m.lost) return;
+  if (m.received) {
+    // Draw at the fixed position where the molecule was absorbed — no random jitter
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, 2.2, 0, Math.PI*2);
+    ctx.fillStyle='rgba(5,150,105,0.55)'; ctx.fill(); return;
+  }
+  if (m.trail.length>1) {
+    ctx.beginPath(); ctx.moveTo(m.trail[0].x,m.trail[0].y);
+    for (let i=1;i<m.trail.length;i++) ctx.lineTo(m.trail[i].x,m.trail[i].y);
+    ctx.strokeStyle='rgba(217,119,6,0.15)'; ctx.lineWidth=1; ctx.stroke();
+  }
+  ctx.beginPath(); ctx.arc(m.x,m.y,2.5,0,Math.PI*2);
+  ctx.fillStyle='#d97706'; ctx.shadowColor='rgba(217,119,6,0.4)'; ctx.shadowBlur=5;
+  ctx.fill(); ctx.shadowBlur=0;
+}
+
+function drawIdle() {
+  resizeCanvases(); layoutCells();
+  const W=simCanvas.width, H=simCanvas.height;
+  drawBg(sctx,W,H); drawBoundary(sctx); drawDistLine(sctx);
+  drawCell(sctx,TX,'#2563eb','#3b82f6','Tx');
+  drawCell(sctx,RX,'#059669','#10b981','Rx');
+  drawGraphEmpty();
+}
+
+// ── Draw: graph ────────────────────────────────────────────────────────────────
+const PAD = {t:28, r:18, b:48, l:52};
+
+function gp() {
+  const W=graphCanvas.width, H=graphCanvas.height;
+  return {W,H,pw:W-PAD.l-PAD.r,ph:H-PAD.t-PAD.b};
+}
+
+// ── Rebinning ──────────────────────────────────────────────────────────────────
+// Sum consecutive BASE_BIN_SEC buckets into display-size bins.
+function rebinFromBase() {
+  const m = getBinMult();
+  buckets = [];
+  for (let i = 0; i < baseBuckets.length; i += m) {
+    let sum = 0;
+    for (let k = i; k < Math.min(i + m, baseBuckets.length); k++) sum += baseBuckets[k];
+    buckets.push(sum);
+  }
+}
+
+function drawGraphEmpty() {
+  const {W,H,pw,ph}=gp();
+  gctx.clearRect(0,0,W,H); gctx.fillStyle='#f7f9fc'; gctx.fillRect(0,0,W,H);
+  // Draw axis lines only — no ticks, no scale, since there's no data yet
+  gctx.strokeStyle='#cbd5e1'; gctx.lineWidth=1.5;
+  gctx.beginPath();
+  gctx.moveTo(PAD.l,PAD.t); gctx.lineTo(PAD.l,PAD.t+ph); gctx.lineTo(PAD.l+pw,PAD.t+ph);
+  gctx.stroke();
+  // Y-axis label
+  gctx.fillStyle='#94a3b8';
+  gctx.save();
+  gctx.translate(13,PAD.t+ph/2); gctx.rotate(-Math.PI/2);
+  gctx.textAlign='center'; gctx.font='10px "DM Sans",sans-serif';
+  gctx.fillText('Molecules / '+getBinSec().toFixed(2)+' s',0,0);
+  gctx.restore();
+  // X-axis label
+  gctx.textAlign='center'; gctx.font='10px "DM Sans",sans-serif';
+  gctx.fillText('Time (s)', PAD.l+pw/2, PAD.t+ph+42);
+}
+
+function gaussianSmooth(arr, sigma) {
+  const out=new Array(arr.length).fill(0), kR=Math.ceil(sigma*2.5);
+  for (let i=0;i<arr.length;i++){
+    let w=0,s=0;
+    for (let k=-kR;k<=kR;k++){
+      const j=i+k; if(j<0||j>=arr.length) continue;
+      const g=Math.exp(-(k*k)/(2*sigma*sigma)); s+=arr[j]*g; w+=g;
+    }
+    out[i]=w>0?s/w:0;
+  }
+  return out;
+}
+
+function drawGraph() {
+  const {W,H,pw,ph}=gp();
+  gctx.clearRect(0,0,W,H); gctx.fillStyle='#f7f9fc'; gctx.fillRect(0,0,W,H);
+
+  const n=buckets.length;
+  if (n<2){drawGraphAxes(1);return;}
+
+  const {bitDur}=getParams();
+  const binSec     = getBinSec();
+  const totalSec   = bitSeq.length > 0 ? bitSeq.length * bitDur
+                     : (baseBuckets.length * BASE_BIN_SEC);
+  const totalBins  = Math.max(n, Math.ceil(totalSec / binSec));
+  const binsPerBit = Math.round(bitDur / binSec);
+  const scaleX     = pw/Math.max(totalBins-1,1);
+
+  const maxRaw   = Math.max(1,...buckets);
+  const smoothed = gaussianSmooth(buckets, Math.max(1.5, n*0.04));
+  const maxVal   = Math.max(maxRaw,...smoothed);
+
+  // Bit-period dividers + value labels
+  for (let b=0;b<bitSeq.length;b++){
+    if (b>0) {
+      const bx=PAD.l+b*binsPerBit*scaleX;
+      gctx.setLineDash([3,4]);
+      gctx.strokeStyle='rgba(148,163,184,0.5)'; gctx.lineWidth=1;
+      gctx.beginPath(); gctx.moveTo(bx,PAD.t); gctx.lineTo(bx,PAD.t+ph); gctx.stroke();
+      gctx.setLineDash([]);
+    }
+    const cx=PAD.l+(b+0.5)*binsPerBit*scaleX;
+    gctx.fillStyle=bitSeq[b]===1?'rgba(37,99,235,0.6)':'rgba(148,163,184,0.6)';
+    gctx.font='bold 10px "DM Mono",monospace'; gctx.textAlign='center';
+    gctx.fillText(''+bitSeq[b], cx, PAD.t+14);
+  }
+
+  // Filled area
+  gctx.beginPath(); gctx.moveTo(PAD.l,PAD.t+ph);
+  for (let i=0;i<n;i++) gctx.lineTo(PAD.l+i*scaleX, PAD.t+ph-(buckets[i]/maxVal)*ph);
+  gctx.lineTo(PAD.l+(n-1)*scaleX,PAD.t+ph); gctx.closePath();
+  const fg=gctx.createLinearGradient(0,PAD.t,0,PAD.t+ph);
+  fg.addColorStop(0,'rgba(37,99,235,0.18)'); fg.addColorStop(1,'rgba(147,197,253,0.04)');
+  gctx.fillStyle=fg; gctx.fill();
+
+  // Smoothed curve
+  gctx.beginPath();
+  for (let i=0;i<n;i++){
+    const x=PAD.l+i*scaleX, y=PAD.t+ph-(smoothed[i]/maxVal)*ph;
+    i===0?gctx.moveTo(x,y):gctx.lineTo(x,y);
+  }
+  gctx.strokeStyle='#2563eb'; gctx.lineWidth=2.5; gctx.lineJoin='round'; gctx.lineCap='round'; gctx.stroke();
+
+  drawGraphAxes(Math.ceil(maxVal));
+
+  gctx.fillStyle='#94a3b8'; gctx.font='10px "DM Sans",sans-serif';
+  gctx.textAlign='left';  gctx.fillText('0 s',PAD.l,PAD.t+ph+28);
+  gctx.textAlign='right'; gctx.fillText(totalSec.toFixed(1)+' s',PAD.l+pw,PAD.t+ph+28);
+  gctx.textAlign='center';gctx.fillText('Time (s)',PAD.l+pw/2,PAD.t+ph+42);
+}
+
+function drawGraphAxes(maxVal) {
+  const {pw,ph}=gp();
+
+  // Draw axis lines
+  gctx.strokeStyle='#cbd5e1'; gctx.lineWidth=1.5;
+  gctx.beginPath();
+  gctx.moveTo(PAD.l,PAD.t); gctx.lineTo(PAD.l,PAD.t+ph); gctx.lineTo(PAD.l+pw,PAD.t+ph);
+  gctx.stroke();
+
+  // ── Compute nice integer tick positions ──────────────────────────────────────
+  // Pick a step size so we get between 2 and 5 ticks above zero.
+  // Candidates: 1, 2, 5, 10, 20, 50, 100, 200, 500, …
+  function niceStep(range, maxTicks) {
+    const rough = range / maxTicks;
+    const mag   = Math.pow(10, Math.floor(Math.log10(rough)));
+    for (const mult of [1, 2, 5, 10]) {
+      if (mag * mult >= rough) return mag * mult;
+    }
+    return mag * 10;
+  }
+
+  const step   = niceStep(maxVal, 4);   // aim for ≤ 4 intervals
+  const ticks  = [];
+  for (let v = 0; v <= maxVal; v += step) ticks.push(v);
+  // Always include maxVal as the top tick if it isn't already there
+  if (ticks[ticks.length - 1] < maxVal) ticks.push(maxVal);
+
+  // Draw tick labels and optional horizontal guide lines
+  gctx.fillStyle='#94a3b8'; gctx.font='10px "DM Mono",monospace'; gctx.textAlign='right';
+  ticks.forEach(v => {
+    const y = PAD.t + ph - (v / maxVal) * ph;
+    gctx.fillText(v, PAD.l - 6, y + 4);
+    if (v > 0 && v < maxVal) {
+      // subtle guide line at intermediate ticks
+      gctx.save();
+      gctx.strokeStyle='rgba(203,213,225,0.5)'; gctx.lineWidth=1;
+      gctx.setLineDash([3,3]);
+      gctx.beginPath(); gctx.moveTo(PAD.l, y); gctx.lineTo(PAD.l+pw, y);
+      gctx.stroke();
+      gctx.setLineDash([]);
+      gctx.restore();
+    }
+  });
+
+  // Y-axis label
+  gctx.save();
+  gctx.translate(13,PAD.t+ph/2); gctx.rotate(-Math.PI/2);
+  gctx.textAlign='center'; gctx.font='10px "DM Sans",sans-serif';
+  gctx.fillText('Molecules / '+getBinSec().toFixed(2)+' s',0,0);
+  gctx.restore();
+}
+
+// ── Bit detection ──────────────────────────────────────────────────────────────
+function detectBit(rxCount, mol0, mol1, thr) {
+  // The "high" bit is the one with more molecules
+  const highBit   = mol1 >= mol0 ? 1 : 0;
+  const lowBit    = 1 - highBit;
+  const maxMol    = Math.max(mol0, mol1);
+  const threshold = maxMol * thr;
+  return rxCount >= threshold ? highBit : lowBit;
+}
+
+function renderBitDisplay() {
+  const txEl = $('txBits');
+  const rxEl = $('rxBits');
+  if (!txEl || !rxEl) return;
+
+  txEl.innerHTML = '';
+  rxEl.innerHTML = '';
+
+  bitSeq.forEach((bit, i) => {
+    // TX cell
+    const tc = document.createElement('div');
+    tc.className = 'bit-cell' + (i === currentBitIdx && running ? ' active' : '');
+    tc.textContent = bit;
+    txEl.appendChild(tc);
+
+    // RX cell
+    const rc = document.createElement('div');
+    if (i < rxDecisions.length) {
+      const decided = rxDecisions[i];
+      rc.className = 'bit-cell ' + (decided === bit ? 'correct' : 'error');
+      rc.textContent = decided;
+    } else {
+      rc.className = 'bit-cell pending';
+      rc.textContent = '·';
+    }
+    rxEl.appendChild(rc);
+  });
+}
+
+// ── Simulation loop ────────────────────────────────────────────────────────────
+function startSim() {
+  if (running) return;
+  const parsed = parseBits();
+  if (!parsed.length) { alert('Enter at least one bit (0 or 1).'); return; }
+  resetSim(false);
+  bitSeq = parsed;
+  resizeCanvases(); layoutCells();
+  running=true;
+  const {bitDur}=getParams();
+  totalSimFrames=Math.round(bitSeq.length*bitDur*FPS);
+  currentBitIdx=0;
+  bitReceivedAtStart=0;
+  rxDecisions=[];
+  renderBitDisplay();
+  spawnBitMolecules(0);
+  setPhaseBadge('Transmitting','active');
+  loop();
+}
+
+function spawnBitMolecules(idx) {
+  const {mol0,mol1}=getParams();
+  const n = bitSeq[idx]===1 ? mol1 : mol0;
+  for (let i=0;i<n;i++) molecules.push(makeMolecule());
+  releasedCount+=n;
+  $('statReleased').textContent=releasedCount;
+  $('statBit').textContent=`${idx+1}/${bitSeq.length} [${bitSeq[idx]}]`;
+}
+
+function loop() {
+  if (!running) return;
+  const {D,drift,bitDur,mol0,mol1,thr}=getParams();
+  const W=simCanvas.width, H=simCanvas.height;
+  const bitDurFrames=Math.round(bitDur*FPS);
+
+  drawBg(sctx,W,H); drawBoundary(sctx); drawDistLine(sctx);
+  const prevRec=receivedCount;
+  molecules.forEach(m=>stepMolecule(m,D,drift));
+  molecules.forEach(m=>drawMolecule(sctx,m));
+  drawCell(sctx,TX,'#2563eb','#3b82f6','Tx');
+  drawCell(sctx,RX,'#059669','#10b981','Rx');
+
+  frameCount++;
+  currentBucket += (receivedCount - prevRec);
+
+  const nextIdx = Math.floor(frameCount / bitDurFrames);
+  // Handle one or more bit periods ending (guards against frame-skip)
+  while (nextIdx > currentBitIdx && rxDecisions.length < bitSeq.length) {
+    // Compute molecules received strictly within this bit's window
+    const rxInBit = receivedCount - bitReceivedAtStart;
+    const decision = detectBit(rxInBit, mol0, mol1, thr);
+    rxDecisions.push(decision);
+    renderBitDisplay();
+
+    currentBitIdx++;
+    // Reset the per-bit counter to the current total received
+    bitReceivedAtStart = receivedCount;
+
+    // Spawn molecules for the next bit if there is one
+    if (currentBitIdx < bitSeq.length) {
+      spawnBitMolecules(currentBitIdx);
+    }
+  }
+
+  if (frameCount % BASE_BIN_FRAMES === 0) {
+    baseBuckets.push(currentBucket);
+    currentBucket = 0;
+    rebinFromBase();
+    drawGraph();
+  }
+
+  $('statReceived').textContent=receivedCount;
+  $('statTime').textContent=(frameCount/FPS).toFixed(1)+' s';
+  if (receivedCount>0) setPhaseBadge('Receiving','active');
+
+  if (frameCount>=totalSimFrames) {
+    // Decide last bit if not yet decided
+    if (rxDecisions.length < bitSeq.length) {
+      const rxInBit = receivedCount - bitReceivedAtStart;
+      rxDecisions.push(detectBit(rxInBit, mol0, mol1, thr));
+      renderBitDisplay();
+    }
+    if (currentBucket > 0) { baseBuckets.push(currentBucket); currentBucket = 0; }
+    rebinFromBase();
+    drawGraph();
+    setPhaseBadge('Complete','done');
+    running=false; return;
+  }
+  animId=requestAnimationFrame(loop);
+}
+
+function resetSim(redraw=true) {
+  running=false;
+  if (animId) cancelAnimationFrame(animId);
+  molecules=[]; receivedCount=0; releasedCount=0; frameCount=0;
+  baseBuckets=[]; buckets=[]; currentBucket=0;
+  currentBitIdx=0; totalSimFrames=0; bitSeq=[];
+  bitReceivedAtStart=0; rxDecisions=[];
+  $('statBit').textContent='—';
+  $('statReleased').textContent='0';
+  $('statReceived').textContent='0';
+  $('statTime').textContent='0.0 s';
+  // Clear bit display
+  const txEl=$('txBits'), rxEl=$('rxBits');
+  if(txEl) txEl.innerHTML='';
+  if(rxEl) rxEl.innerHTML='';
+  setPhaseBadge('Idle','');
+  if (redraw) drawIdle();
+}
+
+function setPhaseBadge(text,cls) {
+  const b=$('phaseBadge'); b.textContent=text;
+  b.className='phase-badge'+(cls?' '+cls:'');
+}
+
+window.addEventListener('load',()=>setTimeout(()=>{resizeCanvases();drawIdle();},60));
+</script>
+</body>
+</html>
